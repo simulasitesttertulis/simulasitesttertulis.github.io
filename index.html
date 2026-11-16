@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<script>try{if(/[#&]k=/.test(location.hash)||(!/[?&]keluar\b/.test(location.search)&&localStorage.getItem('akses-simulasi-kode')))document.documentElement.className='memuat';}catch(e){}</script>
 <title>Simulasi</title>
 <style>
   :root { --bg:#f1f2f4; --bg2:#e2e4e8; --card:#ffffff; --ink:#24272c; --muted:#62666e; --line:#d9dbe0; --accent:#3a3f47; --accent-ink:#ffffff; --gold:#c9a24a; --lock:#c9a24a; --err:#a3312a; }
@@ -28,9 +29,15 @@
   button:disabled { opacity:.6; cursor:wait; }
   .msg { min-height:1.4em; margin-top:12px; font-size:.9rem; color:var(--err); text-align:center; }
   .msg.info { color:var(--muted); }
+  #muat { display:none; position:fixed; inset:0; place-items:center; background:var(--bg); z-index:10; }
+  #muat .spin { width:34px; height:34px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--gold); animation:putar .8s linear infinite; }
+  @keyframes putar { to { transform:rotate(360deg); } }
+  html.memuat #muat { display:grid; }
+  html.memuat main.card { visibility:hidden; }
 </style>
 </head>
 <body>
+<div id="muat" role="status" aria-label="Memuat"><div class="spin"></div></div>
 <main class="card">
   <div class="badge" aria-hidden="true">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
@@ -39,7 +46,6 @@
   <form id="f" autocomplete="off">
     <label for="kode">Kode akses</label>
     <input id="kode" type="password" required autofocus spellcheck="false" autocapitalize="characters">
-    <div class="row"><input id="ingat" type="checkbox" checked><label for="ingat" style="margin:0;font-weight:400">Ingat di perangkat ini</label></div>
     <button id="btn" type="submit">Masuk</button>
     <div id="msg" class="msg" role="status"></div>
   </form>
@@ -53,7 +59,8 @@
 (function(){
   var SIMPAN = 'akses-simulasi-kode', GOOGLE_ID = '__GOOGLE_CLIENT_ID__', GSIMPAN = 'akses-simulasi-google';
   var f = document.getElementById('f'), kode = document.getElementById('kode'),
-      ingat = document.getElementById('ingat'), btn = document.getElementById('btn'), msg = document.getElementById('msg');
+      btn = document.getElementById('btn'), msg = document.getElementById('msg');
+  function tampil(){ document.documentElement.className = ''; }
   function lapor(t, info){ msg.textContent = t; msg.className = 'msg' + (info ? ' info' : ''); }
   function b64(s){ var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
   function rapikan(k){ return (k || '').trim().toUpperCase(); }
@@ -69,7 +76,7 @@
     if (!/apps\.googleusercontent\.com$/.test(GOOGLE_ID)) return Promise.resolve();
     if (ada && ada.n) { pakai(ada); return Promise.resolve(); }
     return new Promise(function(selesai){
-      f.hidden = true; document.getElementById('g').hidden = false;
+      tampil(); f.hidden = true; document.getElementById('g').hidden = false;
       var gm = document.getElementById('gMsg');
       var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
       sc.onerror = function(){ gm.textContent = 'Gagal memuat login Google. Periksa koneksi lalu muat ulang halaman.'; };
@@ -102,7 +109,7 @@
       try { utama = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(K.daftar[i].iv)}, kunciKode, b64(K.daftar[i].c)); } catch(e) {}
     }
     if (!utama) return false;
-    lapor('Kode benar. Memuat aplikasi…', true);
+    if (document.documentElement.className !== 'memuat') lapor('Kode benar. Memuat aplikasi…', true);
     var bU = new Uint8Array(utama), kunciRaw = bU.slice(0, 32), sisa = new TextDecoder().decode(bU.slice(32)), info;
     try { info = JSON.parse(sisa); } catch(e) { info = {l: sisa}; }
     try { sessionStorage.setItem('sts-k', btoa(String.fromCharCode.apply(null, kunciRaw))); sessionStorage.setItem('sts-l', info.l || '');
@@ -122,18 +129,18 @@
     btn.disabled = true; lapor('Memeriksa kode…', true);
     try {
       var ok = await buka(teks);
-      if (ok) { if (ingat.checked || otomatis) ambil(rapikan(teks)); return; }
+      if (ok) { ambil(rapikan(teks)); return; }
       if (otomatis) { ambil(null); lapor('Kode yang tersimpan sudah tidak berlaku. Masukkan kode baru.'); }
       else lapor('Kode akses tidak dikenal. Periksa lagi atau minta kode kepada pemilik.');
     } catch(e) {
-      lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.');
+      tampil(); lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.');
     }
-    btn.disabled = false; kode.focus();
+    tampil(); btn.disabled = false; kode.focus();
   }
 
-  f.addEventListener('submit', function(e){ e.preventDefault(); if (!ingat.checked) ambil(null); coba(kode.value, false); });
+  f.addEventListener('submit', function(e){ e.preventDefault(); coba(kode.value, false); });
   var dariLink = (location.hash.match(/[#&]k=([^&]+)/) || [])[1];
-  if (dariLink) { history.replaceState(null, '', location.pathname); kode.value = decodeURIComponent(dariLink); ingat.checked = true; coba(kode.value, false); }
+  if (dariLink) { history.replaceState(null, '', location.pathname); kode.value = decodeURIComponent(dariLink); coba(kode.value, false); }
   else { var tersimpan = ambil(); if (tersimpan) coba(tersimpan, true); }
 })();
 </script>
