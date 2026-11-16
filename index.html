@@ -120,7 +120,7 @@
     if (!rk.ok) throw new Error('jaringan');
     var data = new Uint8Array(await rk.arrayBuffer());
     var html = new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM', iv:data.slice(0, 12)}, kunciIsi, data.slice(12)));
-    try { localStorage.setItem('skb-panduan', '1'); } catch(e) {}  // panduan selalu menyala saat masuk
+    try { if (!localStorage.getItem('skb-panduan-awal-off')) { localStorage.setItem('skb-panduan', '0'); localStorage.setItem('skb-panduan-awal-off', '1'); } } catch(e) {}  // panduan mati saat pertama masuk; setelah itu pilihan terakhir pengguna diingat
     document.open(); document.write(html); document.close();
     return true;
   }
