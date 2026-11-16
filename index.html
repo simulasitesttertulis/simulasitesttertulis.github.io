@@ -68,8 +68,10 @@
     }
     if (!utama) return false;
     lapor('Kode benar. Memuat aplikasi…', true);
-    var bU = new Uint8Array(utama), kunciRaw = bU.slice(0, 32), label = new TextDecoder().decode(bU.slice(32));
-    try { sessionStorage.setItem('sts-k', btoa(String.fromCharCode.apply(null, kunciRaw))); sessionStorage.setItem('sts-l', label); } catch(e) {}
+    var bU = new Uint8Array(utama), kunciRaw = bU.slice(0, 32), sisa = new TextDecoder().decode(bU.slice(32)), info;
+    try { info = JSON.parse(sisa); } catch(e) { info = {l: sisa}; }
+    try { sessionStorage.setItem('sts-k', btoa(String.fromCharCode.apply(null, kunciRaw))); sessionStorage.setItem('sts-l', info.l || '');
+          if (info.p) sessionStorage.setItem('sts-p', JSON.stringify(info.p)); else sessionStorage.removeItem('sts-p'); } catch(e) {}
     var kunciIsi = await crypto.subtle.importKey('raw', kunciRaw, 'AES-GCM', false, ['decrypt']);
     var rk = await fetch('konten.enc?v=' + encodeURIComponent(K.versi || ''), {cache:'no-store'});
     if (!rk.ok) throw new Error('jaringan');
