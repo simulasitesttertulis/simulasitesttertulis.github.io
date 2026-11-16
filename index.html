@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Simulasi Tes Tertulis</title>
+<style>
+  :root { --bg:#f4f1ea; --card:#ffffff; --ink:#1f2a24; --muted:#5c6a62; --line:#d9d4c7; --accent:#1e5b44; --accent-ink:#ffffff; --err:#a3312a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141a17; --card:#1d2420; --ink:#e7ece9; --muted:#9fb0a7; --line:#2f3a34; --accent:#4fae86; --accent-ink:#0d1411; --err:#ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .card { width:100%; max-width:400px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:28px 24px; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+  .badge { width:44px; height:44px; border-radius:10px; background:var(--accent); color:var(--accent-ink); display:grid; place-items:center; margin-bottom:14px; }
+  h1 { font-size:1.25rem; margin:0 0 4px; }
+  p { margin:0 0 18px; color:var(--muted); font-size:.95rem; }
+  label { display:block; font-weight:600; font-size:.9rem; margin-bottom:6px; }
+  input[type=password], input[type=text] { width:100%; padding:12px 14px; font-size:1rem; border:1px solid var(--line); border-radius:9px; background:transparent; color:var(--ink); letter-spacing:.04em; }
+  input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  .row { display:flex; align-items:center; gap:8px; margin:12px 0 18px; font-size:.9rem; color:var(--muted); }
+  button { width:100%; padding:12px; font-size:1rem; font-weight:600; border:0; border-radius:9px; background:var(--accent); color:var(--accent-ink); cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .msg { min-height:1.4em; margin-top:12px; font-size:.9rem; color:var(--err); }
+  .msg.info { color:var(--muted); }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="badge" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+  </div>
+  <h1>Simulasi Tes Tertulis</h1>
+  <p>Halaman ini khusus untuk peserta yang sudah mendapat kode akses. Masukkan kode Anda untuk membuka aplikasi.</p>
+  <form id="f" autocomplete="off">
+    <label for="kode">Kode akses</label>
+    <input id="kode" type="password" required autofocus spellcheck="false" autocapitalize="characters">
+    <div class="row"><input id="ingat" type="checkbox" checked><label for="ingat" style="margin:0;font-weight:400">Ingat di perangkat ini</label></div>
+    <button id="btn" type="submit">Masuk</button>
+    <div id="msg" class="msg" role="status"></div>
+  </form>
+</main>
+<script>
+(function(){
+  var SIMPAN = 'akses-simulasi-kode';
+  var f = document.getElementById('f'), kode = document.getElementById('kode'),
+      ingat = document.getElementById('ingat'), btn = document.getElementById('btn'), msg = document.getElementById('msg');
+  function lapor(t, info){ msg.textContent = t; msg.className = 'msg' + (info ? ' info' : ''); }
+  function b64(s){ var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function rapikan(k){ return (k || '').trim().toUpperCase(); }
+  function ambil(k){ try { return k === undefined ? localStorage.getItem(SIMPAN) : (k === null ? localStorage.removeItem(SIMPAN) : localStorage.setItem(SIMPAN, k)); } catch(e){ return null; } }
+
+  if (!window.crypto || !crypto.subtle) { lapor('Browser ini tidak mendukung. Gunakan Chrome, Edge, Firefox, atau Safari versi terbaru.'); btn.disabled = true; return; }
+  if (/[?&]keluar\b/.test(location.search)) { ambil(null); history.replaceState(null, '', location.pathname); }
+
+  async function buka(teks){
+    var enc = new TextEncoder();
+    var r = await fetch('kunci.json', {cache:'no-store'});
+    if (!r.ok) throw new Error('jaringan');
+    var K = await r.json();
+    var bahan = await crypto.subtle.importKey('raw', enc.encode(rapikan(teks)), 'PBKDF2', false, ['deriveKey']);
+    var kunciKode = await crypto.subtle.deriveKey({name:'PBKDF2', salt:b64(K.salt), iterations:K.iter, hash:'SHA-256'}, bahan, {name:'AES-GCM', length:256}, false, ['decrypt']);
+    var utama = null;
+    for (var i = 0; i < K.daftar.length && !utama; i++) {
+      try { utama = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(K.daftar[i].iv)}, kunciKode, b64(K.daftar[i].c)); } catch(e) {}
+    }
+    if (!utama) return false;
+    lapor('Kode benar. Memuat aplikasi…', true);
+    var kunciIsi = await crypto.subtle.importKey('raw', utama, 'AES-GCM', false, ['decrypt']);
+    var rk = await fetch('konten.enc?v=' + encodeURIComponent(K.versi || ''), {cache:'no-store'});
+    if (!rk.ok) throw new Error('jaringan');
+    var data = new Uint8Array(await rk.arrayBuffer());
+    var html = new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM', iv:data.slice(0, 12)}, kunciIsi, data.slice(12)));
+    document.open(); document.write(html); document.close();
+    return true;
+  }
+
+  async function coba(teks, otomatis){
+    btn.disabled = true; lapor('Memeriksa kode…', true);
+    try {
+      var ok = await buka(teks);
+      if (ok) { if (ingat.checked || otomatis) ambil(rapikan(teks)); return; }
+      if (otomatis) { ambil(null); lapor('Kode yang tersimpan sudah tidak berlaku. Masukkan kode baru.'); }
+      else lapor('Kode akses tidak dikenal. Periksa lagi atau minta kode kepada pemilik.');
+    } catch(e) {
+      lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.');
+    }
+    btn.disabled = false; kode.focus();
+  }
+
+  f.addEventListener('submit', function(e){ e.preventDefault(); if (!ingat.checked) ambil(null); coba(kode.value, false); });
+  var tersimpan = ambil();
+  if (tersimpan) coba(tersimpan, true);
+})();
+</script>
+</body>
+</html>
