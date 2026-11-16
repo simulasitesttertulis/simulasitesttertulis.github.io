@@ -41,10 +41,15 @@
     <button id="btn" type="submit">Masuk</button>
     <div id="msg" class="msg" role="status"></div>
   </form>
+  <div id="g" hidden>
+    <p style="margin-top:4px"><b style="color:var(--ink)">Satu langkah lagi.</b> Masuk dengan akun Google Anda. Ini hanya sekali di perangkat ini, dan nama Anda tidak ditampilkan ke peserta lain.</p>
+    <div id="gBtn" style="display:flex;justify-content:center;min-height:44px"></div>
+    <div id="gMsg" class="msg" role="status"></div>
+  </div>
 </main>
 <script>
 (function(){
-  var SIMPAN = 'akses-simulasi-kode';
+  var SIMPAN = 'akses-simulasi-kode', GOOGLE_ID = '__GOOGLE_CLIENT_ID__', GSIMPAN = 'akses-simulasi-google';
   var f = document.getElementById('f'), kode = document.getElementById('kode'),
       ingat = document.getElementById('ingat'), btn = document.getElementById('btn'), msg = document.getElementById('msg');
   function lapor(t, info){ msg.textContent = t; msg.className = 'msg' + (info ? ' info' : ''); }
@@ -53,7 +58,35 @@
   function ambil(k){ try { return k === undefined ? localStorage.getItem(SIMPAN) : (k === null ? localStorage.removeItem(SIMPAN) : localStorage.setItem(SIMPAN, k)); } catch(e){ return null; } }
 
   if (!window.crypto || !crypto.subtle) { lapor('Browser ini tidak mendukung. Gunakan Chrome, Edge, Firefox, atau Safari versi terbaru.'); btn.disabled = true; return; }
-  if (/[?&]keluar\b/.test(location.search)) { ambil(null); history.replaceState(null, '', location.pathname); }
+  if (/[?&]keluar\b/.test(location.search)) { ambil(null); try { localStorage.removeItem(GSIMPAN); } catch(e) {} history.replaceState(null, '', location.pathname); }
+
+  // Login Google (Google Identity Services) hanya untuk mengambil nama tampilan; izin masuk tetap dari kode akses.
+  function google(){
+    var ada = null; try { ada = JSON.parse(localStorage.getItem(GSIMPAN) || 'null'); } catch(e) {}
+    function pakai(g){ try { sessionStorage.setItem('sts-gn', g.n || ''); sessionStorage.setItem('sts-ge', g.e || ''); } catch(e) {} }
+    if (!/apps\.googleusercontent\.com$/.test(GOOGLE_ID)) return Promise.resolve();
+    if (ada && ada.n) { pakai(ada); return Promise.resolve(); }
+    return new Promise(function(selesai){
+      f.hidden = true; document.getElementById('g').hidden = false;
+      var gm = document.getElementById('gMsg');
+      var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+      sc.onerror = function(){ gm.textContent = 'Gagal memuat login Google. Periksa koneksi lalu muat ulang halaman.'; };
+      sc.onload = function(){
+        google_accounts().initialize({ client_id: GOOGLE_ID, auto_select: true, callback: function(r){
+          try {
+            var bag = r.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            var o = JSON.parse(new TextDecoder().decode(b64(bag + '==='.slice((bag.length + 3) % 4))));
+            var g = { n: String(o.name || o.given_name || '').slice(0, 50), e: String(o.email || '').slice(0, 80) };
+            try { localStorage.setItem(GSIMPAN, JSON.stringify(g)); } catch(e) {}
+            pakai(g); document.getElementById('g').hidden = true; lapor('Memuat aplikasi…', true); f.hidden = false; selesai();
+          } catch(e) { gm.textContent = 'Login Google gagal. Coba lagi.'; }
+        }});
+        google_accounts().renderButton(document.getElementById('gBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'id' });
+      };
+      document.head.appendChild(sc);
+    });
+  }
+  function google_accounts(){ return window.google.accounts.id; }
 
   async function buka(teks){
     var enc = new TextEncoder();
@@ -72,6 +105,7 @@
     try { info = JSON.parse(sisa); } catch(e) { info = {l: sisa}; }
     try { sessionStorage.setItem('sts-k', btoa(String.fromCharCode.apply(null, kunciRaw))); sessionStorage.setItem('sts-l', info.l || '');
           if (info.p) sessionStorage.setItem('sts-p', JSON.stringify(info.p)); else sessionStorage.removeItem('sts-p'); } catch(e) {}
+    await google();
     var kunciIsi = await crypto.subtle.importKey('raw', kunciRaw, 'AES-GCM', false, ['decrypt']);
     var rk = await fetch('konten.enc?v=' + encodeURIComponent(K.versi || ''), {cache:'no-store'});
     if (!rk.ok) throw new Error('jaringan');
