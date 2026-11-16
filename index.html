@@ -113,6 +113,7 @@
     if (!rk.ok) throw new Error('jaringan');
     var data = new Uint8Array(await rk.arrayBuffer());
     var html = new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM', iv:data.slice(0, 12)}, kunciIsi, data.slice(12)));
+    try { localStorage.setItem('skb-panduan', '1'); } catch(e) {}  // panduan selalu menyala saat masuk
     document.open(); document.write(html); document.close();
     return true;
   }
