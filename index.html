@@ -78,7 +78,7 @@
   var SIMPAN = 'akses-simulasi-kode', GOOGLE_ID = '824846551547-o0f1rpv81tnlmll0lclmfu1c7mms5urb.apps.googleusercontent.com', GSIMPAN = 'akses-simulasi-google',
       KSIMPAN = 'akses-simulasi-kunci', MINTA = 'akses-simulasi-minta', PSIMPAN = 'akses-simulasi-pemilik';
   // Kunci publik pemilik: permintaan izin dienkripsi dengan kunci ini, jadi hanya pemilik yang bisa membacanya.
-  var PUB = {"kty":"RSA","n":"kFqz9QW1CGbkZrrUu1uq1-SFtwcV57zCRWNCfDDyohGeILdVA13Dk_7lvbE3gBsLCkAPfjyIqZtu35l1xw4KUNrek9nOiy_3ZpDSYa6QidXOqB2JjujM8cQ36X36RQlXhqi5053wcSPJHuXsR2AJScjlPAeovl7EMRi4VqjGxs3AqCEpCMIhKpZkVMgDrA-_ZkZynCohv5qniWiwg5FI1LLeifhqpkX3DKcUUa3u_HBg8hVPYC8NNefmCzOoQcoTlirP0_pGM6YJmWwHzvbI2_9kSJRUKxexuq9Q04c32_aQ5s7CfDCAgW7kEq7SLxM4825X7mvqKf6NnXXXZd41Dw","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+  var PUB = {"kty":"RSA","n":"u2UbcXid5u7QlCISXnCykhscmh-M0pjuJW2HqfZccB6FjuM0YTyTgzsUmmux8Euioxg2VW269hxiJNQpvhDjQGfAljwhQr79aHs2hDB4ZvZPQBwfaeY_RBuNUmTqiyYPST46dVLN3RaEZu2yp6yloqEjzKWwtbm8uhp5uZj1WDla4rYE_ISA5cMgFQJAP5647Qty5Ht2nH64qAo8m7MUfZBS9QpjX4kvaBWyTEP43O1TiTu1FHChMwW1Nfa0xJ21rZuMaJVLhJ7LBzUqQYl_es3D6946OX4VCrZ5KbT4fqfIFXKc0n-BEDmXtOcbO-RG2UaGUK-QpAUDgKmKw07Guw","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
   var BROKERS = (function(){ try { var b = localStorage.getItem('sts-broker'); return b ? b.split(',') : null; } catch(e){} })() || ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
   var $ = function(i){ return document.getElementById(i); };
   var f = $('f'), kode = $('kode'), btn = $('btn'), msg = $('msg'), q = $('q'), qMsg = $('qMsg');
@@ -263,7 +263,8 @@
   // Urutan: kode akses dulu (dari link atau yang tersimpan); kode pemilik langsung masuk, kode peserta lanjut ke Google dan persetujuan.
   (async function(){
     // Perangkat pemilik selalu masuk sebagai pemilik, walaupun membuka link peserta. Untuk mencoba sebagai peserta, pakai jendela Samaran.
-    var kp = baca(PSIMPAN); if (kp) { memuat(); return coba(kp, true); }
+    var kp = baca(PSIMPAN);
+    if (kp) { memuat(); try { if ((await bukaKode(kp)) === true) return; } catch(e) { tampil(); lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.'); return; } catat(PSIMPAN, null); if (ambil() === kp) ambil(null); }
     if (dariLink) { memuat(); kode.value = decodeURIComponent(dariLink); return coba(kode.value, false); }
     var tersimpan = ambil(); if (tersimpan) { memuat(); return coba(tersimpan, true); }
     var ks = baca(KSIMPAN);
