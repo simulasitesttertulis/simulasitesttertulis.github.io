@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<script>try{if(/[#&]k=/.test(location.hash)||(!/[?&]keluar\b/.test(location.search)&&(localStorage.getItem('akses-simulasi-kode')||localStorage.getItem('akses-simulasi-kunci'))))document.documentElement.className='memuat';}catch(e){}</script>
+<script>try{if(/[#&]k=/.test(location.hash)||(!/[?&]keluar\b/.test(location.search)&&(localStorage.getItem('akses-simulasi-kode')||localStorage.getItem('akses-simulasi-kunci')||localStorage.getItem('akses-simulasi-pemilik'))))document.documentElement.className='memuat';}catch(e){}</script>
 <title>Simulasi</title>
 <style>
   :root { --bg:#f1f2f4; --bg2:#e2e4e8; --card:#ffffff; --ink:#24272c; --muted:#62666e; --line:#d9dbe0; --accent:#3a3f47; --accent-ink:#ffffff; --gold:#c9a24a; --lock:#c9a24a; --err:#a3312a; }
@@ -76,9 +76,9 @@
 <script>
 (function(){
   var SIMPAN = 'akses-simulasi-kode', GOOGLE_ID = '824846551547-o0f1rpv81tnlmll0lclmfu1c7mms5urb.apps.googleusercontent.com', GSIMPAN = 'akses-simulasi-google',
-      KSIMPAN = 'akses-simulasi-kunci', MINTA = 'akses-simulasi-minta';
+      KSIMPAN = 'akses-simulasi-kunci', MINTA = 'akses-simulasi-minta', PSIMPAN = 'akses-simulasi-pemilik';
   // Kunci publik pemilik: permintaan izin dienkripsi dengan kunci ini, jadi hanya pemilik yang bisa membacanya.
-  var PUB = {"kty":"RSA","n":"xqZKCrF3Bey1qrqZWzx7fQXpS6K5NNNs60FuTewaI8iph7WqtN7TXbGlJur5s0nDT1tkeRVQDSsPxF8QZWLGa-XxH_Xvj1ZcQm_m9X1UdjKtGg0_ITpRgQSCM9BIgbSClawDZgDaaEvszv-sgwRvwQCaXqMGWwOW1vg3u82UXFZlU2WNymoVHTUYJTVSIo84AYwlLvyx9WVRwW56rB1X3JKWGicDyLae76uEJlSx176tLhWAFfaWjOM0nbPxecbvSKUHM9j_AvwPz7dh3NjZLoWyPXMYHBgPSrvratH5q8JvkFq46vWhcX72tHOzNZoEsj6Qxxp6zSCMZUltdmIohw","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+  var PUB = {"kty":"RSA","n":"kFqz9QW1CGbkZrrUu1uq1-SFtwcV57zCRWNCfDDyohGeILdVA13Dk_7lvbE3gBsLCkAPfjyIqZtu35l1xw4KUNrek9nOiy_3ZpDSYa6QidXOqB2JjujM8cQ36X36RQlXhqi5053wcSPJHuXsR2AJScjlPAeovl7EMRi4VqjGxs3AqCEpCMIhKpZkVMgDrA-_ZkZynCohv5qniWiwg5FI1LLeifhqpkX3DKcUUa3u_HBg8hVPYC8NNefmCzOoQcoTlirP0_pGM6YJmWwHzvbI2_9kSJRUKxexuq9Q04c32_aQ5s7CfDCAgW7kEq7SLxM4825X7mvqKf6NnXXXZd41Dw","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
   var BROKERS = (function(){ try { var b = localStorage.getItem('sts-broker'); return b ? b.split(',') : null; } catch(e){} })() || ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
   var $ = function(i){ return document.getElementById(i); };
   var f = $('f'), kode = $('kode'), btn = $('btn'), msg = $('msg'), q = $('q'), qMsg = $('qMsg');
@@ -95,7 +95,7 @@
   function ss(k){ try { return sessionStorage.getItem(k) || ''; } catch(e){ return ''; } }
 
   if (!window.crypto || !crypto.subtle) { tampil(); f.hidden = false; lapor('Browser ini tidak mendukung. Gunakan Chrome, Edge, Firefox, atau Safari versi terbaru.'); btn.disabled = true; return; }
-  if (/[?&]keluar\b/.test(location.search)) { ambil(null); catat(KSIMPAN, null); try { localStorage.removeItem(GSIMPAN); } catch(e) {} history.replaceState(null, '', location.pathname); }
+  if (/[?&]keluar\b/.test(location.search)) { ambil(null); catat(KSIMPAN, null); catat(PSIMPAN, null); try { localStorage.removeItem(GSIMPAN); } catch(e) {} history.replaceState(null, '', location.pathname); }
 
   // Login Google (Google Identity Services): langkah pertama untuk semua orang, setelah Client ID dipasang.
   function google(){
@@ -152,7 +152,8 @@
     if (!utama) return false;
     var bU = new Uint8Array(utama), info;
     try { info = JSON.parse(new TextDecoder().decode(bU.slice(32))); } catch(e) { info = {}; }
-    if (info.izin) return 'izin';   // kode peserta: tidak membawa kunci, harus disetujui pemilik
+    if (info.izin) return 'izin';
+    if (info.p) catat(PSIMPAN, rapikan(teks));   // kode pemilik diingat terpisah, supaya hak pemilik tidak tertimpa link peserta   // kode peserta: tidak membawa kunci, harus disetujui pemilik
     return masuk(bU.slice(0, 32), info);
   }
 
@@ -162,6 +163,7 @@
       var h = await bukaKode(teks);
       if (h === 'izin') { ambil(rapikan(teks)); lapor(''); return lanjutPeserta(); }
       if (h) { ambil(rapikan(teks)); return; }
+      if (otomatis && teks === baca(PSIMPAN)) catat(PSIMPAN, null);
       ambil(null); tampil();
       lapor(otomatis ? 'Kode yang tersimpan sudah tidak berlaku. Masukkan kode akses.' : 'Kode akses tidak dikenal. Periksa lagi atau minta kode kepada pemilik.');
     } catch(e) { tampil(); lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.'); }
@@ -260,6 +262,8 @@
   if (dariLink) history.replaceState(null, '', location.pathname);
   // Urutan: kode akses dulu (dari link atau yang tersimpan); kode pemilik langsung masuk, kode peserta lanjut ke Google dan persetujuan.
   (async function(){
+    // Perangkat pemilik selalu masuk sebagai pemilik, walaupun membuka link peserta. Untuk mencoba sebagai peserta, pakai jendela Samaran.
+    var kp = baca(PSIMPAN); if (kp) { memuat(); return coba(kp, true); }
     if (dariLink) { memuat(); kode.value = decodeURIComponent(dariLink); return coba(kode.value, false); }
     var tersimpan = ambil(); if (tersimpan) { memuat(); return coba(tersimpan, true); }
     var ks = baca(KSIMPAN);
