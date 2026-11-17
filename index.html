@@ -260,7 +260,9 @@
     $('qKirim').disabled = true;
     try { await siapkan(); } catch(e) { laporQ('Gagal menyiapkan permintaan. Periksa koneksi lalu muat ulang halaman.'); return; }
     if (M.n && !gn) $('qNama').value = M.n;
-    if (M.kirim) tunggu(); else { $('qKirim').disabled = false; if (!gn) $('qNama').focus(); }
+    if (M.kirim) tunggu();
+    else if (gn) { $('qKirim').disabled = false; $('qKirim').click(); }   // sudah masuk Google: permintaan langsung dikirim (akun yang sudah disetujui langsung masuk)
+    else { $('qKirim').disabled = false; $('qNama').focus(); }
   }
   $('qKirim').onclick = function(){
     var n = namaSaya(); if (!n) { laporQ('Isi nama Anda dulu.'); $('qNama').focus(); return; }
