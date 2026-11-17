@@ -56,7 +56,7 @@
   </div>
   <div id="q" hidden>
     <div id="qForm">
-      <p style="margin-top:4px">Untuk pertama kali, akses perlu disetujui pemilik. Kirim permintaan, lalu tunggu persetujuannya.</p>
+      <p style="margin-top:4px">Kode benar. Untuk pertama kali di perangkat ini, akses perlu disetujui pemilik. Kirim permintaan, lalu tunggu persetujuannya.</p>
       <p id="qSiapa" class="siapa" hidden></p>
       <div id="qNamaBox"><label for="qNama">Nama Anda</label>
       <input id="qNama" type="text" maxlength="50" autocomplete="name" style="letter-spacing:0;margin-bottom:12px"></div>
@@ -66,13 +66,13 @@
       <div><b>Menunggu persetujuan pemilik.</b><br><span style="color:var(--muted);font-size:.92rem">Halaman ini terbuka sendiri setelah disetujui. Anda boleh menutupnya dan kembali nanti lewat link yang sama.</span></div></div>
     <div id="qMsg" class="msg" role="status"></div>
   </div>
-  <form id="f" autocomplete="off" hidden>
-    <label for="kode">Kode pemilik</label>
-    <input id="kode" type="password" required spellcheck="false" autocapitalize="characters">
+  <form id="f" autocomplete="off">
+    <label for="kode">Kode akses</label>
+    <input id="kode" type="password" required autofocus spellcheck="false" autocapitalize="characters">
     <button id="btn" type="submit" style="margin-top:12px">Masuk</button>
     <div id="msg" class="msg" role="status"></div>
   </form>
-  <button id="keKode" class="tautan" type="button" hidden>Masuk dengan kode pemilik</button>
+  <button id="keKode" class="tautan" type="button" hidden>Ganti kode akses</button>
 </main>
 <script>
 (function(){
@@ -151,21 +151,30 @@
       try { utama = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(K.daftar[i].iv)}, kunciKode, b64(K.daftar[i].c)); } catch(e) {}
     }
     if (!utama) return false;
-    if (document.documentElement.className !== 'memuat') lapor('Kode benar. Memuat aplikasi…', true);
     var bU = new Uint8Array(utama), info;
     try { info = JSON.parse(new TextDecoder().decode(bU.slice(32))); } catch(e) { info = {}; }
+    if (info.izin) return 'izin';   // kode peserta: tidak membawa kunci, harus disetujui pemilik
     return masuk(bU.slice(0, 32), info);
   }
 
   async function coba(teks, otomatis){
     btn.disabled = true; lapor('Memeriksa kode…', true);
     try {
-      if (await bukaKode(teks)) { ambil(rapikan(teks)); return; }
-      ambil(null);
-      if (otomatis) { mintaIzin(); return; }   // kode lama (misalnya SMLTLS-101) sudah tidak berlaku: minta izin pemilik
-      tampil(); lapor('Kode pemilik tidak dikenal.');
+      var h = await bukaKode(teks);
+      if (h === 'izin') { ambil(rapikan(teks)); lapor(''); return lanjutPeserta(); }
+      if (h) { ambil(rapikan(teks)); return; }
+      ambil(null); tampil();
+      lapor(otomatis ? 'Kode yang tersimpan sudah tidak berlaku. Masukkan kode akses.' : 'Kode akses tidak dikenal. Periksa lagi atau minta kode kepada pemilik.');
     } catch(e) { tampil(); lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.'); }
     btn.disabled = false; kode.focus();
+  }
+
+  // Peserta: (1) kode akses benar, (2) masuk Google (setelah Client ID dipasang), (3) persetujuan pemilik. Setelah disetujui, langsung masuk.
+  async function lanjutPeserta(){
+    var ks = baca(KSIMPAN);
+    if (ks && ks.k) { memuat(); try { if (await masuk(b64(ks.k), {})) return; catat(KSIMPAN, null); } catch(e) { tampil(); f.hidden = false; lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.'); return; } }
+    await google();
+    mintaIzin();
   }
 
   // ---------- Minta izin pemilik ----------
@@ -244,22 +253,19 @@
     klien.forEach(function(c){ if (c.connected) c.publish(R + 'a/' + M.id, new Uint8Array(0), {retain:true, qos:1}); });   // hapus penolakan lama
     kirim(); tunggu();
   };
-  $('keKode').onclick = function(){ q.hidden = true; $('keKode').hidden = true; f.hidden = false; lapor(''); kode.focus(); };
+  $('keKode').onclick = function(){ btn.disabled = false; q.hidden = true; $('keKode').hidden = true; f.hidden = false; ambil(null); kode.value = ''; lapor(''); kode.focus(); };
 
   f.addEventListener('submit', function(e){ e.preventDefault(); coba(kode.value, false); });
   var dariLink = (location.hash.match(/[#&]k=([^&]+)/) || [])[1];
   if (dariLink) history.replaceState(null, '', location.pathname);
-  // Urutan: (1) login Google bila sudah aktif, (2) kode pemilik dari link/tersimpan, (3) kunci dari persetujuan, (4) minta izin.
-  google().then(async function(){
+  // Urutan: kode akses dulu (dari link atau yang tersimpan); kode pemilik langsung masuk, kode peserta lanjut ke Google dan persetujuan.
+  (async function(){
     if (dariLink) { memuat(); kode.value = decodeURIComponent(dariLink); return coba(kode.value, false); }
     var tersimpan = ambil(); if (tersimpan) { memuat(); return coba(tersimpan, true); }
     var ks = baca(KSIMPAN);
-    if (ks && ks.k) {
-      memuat();
-      try { if (await masuk(b64(ks.k), {})) return; catat(KSIMPAN, null); } catch(e) { tampil(); f.hidden = true; q.hidden = false; laporQ('Gagal memuat. Periksa koneksi internet lalu muat ulang halaman.'); return; }
-    }
-    mintaIzin();
-  });
+    if (ks && ks.k) { memuat(); try { if (await masuk(b64(ks.k), {})) return; catat(KSIMPAN, null); } catch(e) {} }
+    tampil(); kode.focus();
+  })();
 })();
 </script>
 </body>
