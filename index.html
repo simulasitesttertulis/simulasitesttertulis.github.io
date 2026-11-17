@@ -97,6 +97,7 @@
   if (!window.crypto || !crypto.subtle) { tampil(); f.hidden = false; lapor('Browser ini tidak mendukung. Gunakan Chrome, Edge, Firefox, atau Safari versi terbaru.'); btn.disabled = true; return; }
   if (/[?&]keluar\b/.test(location.search)) { ambil(null); catat(KSIMPAN, null); catat(PSIMPAN, null); try { localStorage.removeItem(GSIMPAN); } catch(e) {} history.replaceState(null, '', location.pathname); }
 
+  (function(){ var gs = baca(GSIMPAN); if (gs && gs.n) try { sessionStorage.setItem('sts-gn', gs.n); sessionStorage.setItem('sts-ge', gs.e || ''); } catch(e) {} })();
   // Login Google (Google Identity Services): langkah pertama untuk semua orang, setelah Client ID dipasang.
   function google(){
     var ada = baca(GSIMPAN);
