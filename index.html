@@ -50,7 +50,6 @@
   </div>
   <h1>Simulasi</h1>
   <div id="g" hidden>
-    <p style="margin-top:4px">Masuk dengan akun Google Anda untuk membuka simulasi. Cukup sekali di perangkat ini, dan nama Anda tidak ditampilkan ke peserta lain.</p>
     <div id="gBtn" style="display:flex;justify-content:center;min-height:44px"></div>
     <div id="gMsg" class="msg" role="status"></div>
   </div>
@@ -256,6 +255,7 @@
   $('keKode').onclick = function(){ btn.disabled = false; q.hidden = true; $('keKode').hidden = true; f.hidden = false; ambil(null); kode.value = ''; lapor(''); kode.focus(); };
 
   f.addEventListener('submit', function(e){ e.preventDefault(); coba(kode.value, false); });
+  addEventListener('hashchange', function(){ if (/[#&]k=/.test(location.hash)) location.reload(); });
   var dariLink = (location.hash.match(/[#&]k=([^&]+)/) || [])[1];
   if (dariLink) history.replaceState(null, '', location.pathname);
   // Urutan: kode akses dulu (dari link atau yang tersimpan); kode pemilik langsung masuk, kode peserta lanjut ke Google dan persetujuan.
