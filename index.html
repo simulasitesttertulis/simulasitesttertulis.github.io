@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<script>try{if(/[#&]k=/.test(location.hash)||(!/[?&]keluar\b/.test(location.search)&&localStorage.getItem('akses-simulasi-kode')))document.documentElement.className='memuat';}catch(e){}</script>
+<script>try{if(/[#&]k=/.test(location.hash)||(!/[?&]keluar\b/.test(location.search)&&(localStorage.getItem('akses-simulasi-kode')||localStorage.getItem('akses-simulasi-kunci'))))document.documentElement.className='memuat';}catch(e){}</script>
 <title>Simulasi</title>
 <style>
   :root { --bg:#f1f2f4; --bg2:#e2e4e8; --card:#ffffff; --ink:#24272c; --muted:#62666e; --line:#d9dbe0; --accent:#3a3f47; --accent-ink:#ffffff; --gold:#c9a24a; --lock:#c9a24a; --err:#a3312a; }
@@ -12,13 +12,19 @@
     :root { --bg:#16181b; --bg2:#202328; --card:#25282d; --ink:#eef0f3; --muted:#a7abb3; --line:#383c43; --accent:#c9a24a; --accent-ink:#24272c; --gold:#d9b864; --lock:#24272c; --err:#ff8a80; }
   }
   * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
   html, body { margin:0; min-height:100vh; }
   body { background:radial-gradient(1200px 600px at 50% -10%, var(--bg2), var(--bg)); color:var(--ink); font:16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display:flex; align-items:center; justify-content:center; padding:24px 16px; }
   .card { width:100%; max-width:420px; margin:auto; background:var(--card); border:1px solid var(--line); border-top:3px solid var(--gold); border-radius:16px; padding:34px 28px 28px; box-shadow:0 18px 50px rgba(0,0,0,.14); text-align:center; }
   .badge { width:58px; height:58px; border-radius:50%; background:var(--accent); color:var(--lock); display:grid; place-items:center; margin:0 auto 16px; box-shadow:0 0 0 6px rgba(201,162,74,.15); }
   h1 { font-size:1.4rem; margin:0 0 24px; letter-spacing:.01em; }
   p { margin:0 0 22px; color:var(--muted); font-size:.95rem; }
-  form, #g { text-align:left; }
+  form, #g, #q { text-align:left; }
+  .tautan { display:block; margin:16px auto 0; width:auto; padding:4px 8px; background:none; color:var(--muted); font-size:.85rem; font-weight:500; text-decoration:underline; }
+  .tunggu { display:flex; gap:12px; align-items:flex-start; text-align:left; padding:14px; border:1px solid var(--line); border-radius:12px; margin-top:4px; }
+  .tunggu .spin { flex:none; width:22px; height:22px; border-width:2px; margin-top:2px; }
+  .spin { border-radius:50%; border:3px solid var(--line); border-top-color:var(--gold); animation:putar .8s linear infinite; }
+  .siapa { font-weight:600; margin:0 0 14px; color:var(--ink); }
   label { display:block; font-weight:600; font-size:.9rem; margin-bottom:6px; }
   input[type=password], input[type=text] { width:100%; padding:12px 14px; font-size:1rem; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--ink); letter-spacing:.06em; text-align:center; }
   input:focus { outline:2px solid var(--gold); outline-offset:1px; border-color:transparent; }
@@ -43,61 +49,97 @@
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
   </div>
   <h1>Simulasi</h1>
-  <form id="f" autocomplete="off">
-    <label for="kode">Kode akses</label>
-    <input id="kode" type="password" required autofocus spellcheck="false" autocapitalize="characters">
-    <button id="btn" type="submit">Masuk</button>
-    <div id="msg" class="msg" role="status"></div>
-  </form>
   <div id="g" hidden>
-    <p style="margin-top:4px"><b style="color:var(--ink)">Satu langkah lagi.</b> Masuk dengan akun Google Anda. Ini hanya sekali di perangkat ini, dan nama Anda tidak ditampilkan ke peserta lain.</p>
+    <p style="margin-top:4px">Masuk dengan akun Google Anda untuk membuka simulasi. Cukup sekali di perangkat ini, dan nama Anda tidak ditampilkan ke peserta lain.</p>
     <div id="gBtn" style="display:flex;justify-content:center;min-height:44px"></div>
     <div id="gMsg" class="msg" role="status"></div>
   </div>
+  <div id="q" hidden>
+    <div id="qForm">
+      <p style="margin-top:4px">Untuk pertama kali, akses perlu disetujui pemilik. Kirim permintaan, lalu tunggu persetujuannya.</p>
+      <p id="qSiapa" class="siapa" hidden></p>
+      <div id="qNamaBox"><label for="qNama">Nama Anda</label>
+      <input id="qNama" type="text" maxlength="50" autocomplete="name" style="letter-spacing:0;margin-bottom:12px"></div>
+      <button id="qKirim" type="button">Minta izin masuk</button>
+    </div>
+    <div id="qTunggu" class="tunggu" hidden><div class="spin"></div>
+      <div><b>Menunggu persetujuan pemilik.</b><br><span style="color:var(--muted);font-size:.92rem">Halaman ini terbuka sendiri setelah disetujui. Anda boleh menutupnya dan kembali nanti lewat link yang sama.</span></div></div>
+    <div id="qMsg" class="msg" role="status"></div>
+  </div>
+  <form id="f" autocomplete="off" hidden>
+    <label for="kode">Kode pemilik</label>
+    <input id="kode" type="password" required spellcheck="false" autocapitalize="characters">
+    <button id="btn" type="submit" style="margin-top:12px">Masuk</button>
+    <div id="msg" class="msg" role="status"></div>
+  </form>
+  <button id="keKode" class="tautan" type="button" hidden>Masuk dengan kode pemilik</button>
 </main>
 <script>
 (function(){
-  var SIMPAN = 'akses-simulasi-kode', GOOGLE_ID = '__GOOGLE_CLIENT_ID__', GSIMPAN = 'akses-simulasi-google';
-  var f = document.getElementById('f'), kode = document.getElementById('kode'),
-      btn = document.getElementById('btn'), msg = document.getElementById('msg');
+  var SIMPAN = 'akses-simulasi-kode', GOOGLE_ID = '__GOOGLE_CLIENT_ID__', GSIMPAN = 'akses-simulasi-google',
+      KSIMPAN = 'akses-simulasi-kunci', MINTA = 'akses-simulasi-minta';
+  // Kunci publik pemilik: permintaan izin dienkripsi dengan kunci ini, jadi hanya pemilik yang bisa membacanya.
+  var PUB = {"kty":"RSA","n":"xqZKCrF3Bey1qrqZWzx7fQXpS6K5NNNs60FuTewaI8iph7WqtN7TXbGlJur5s0nDT1tkeRVQDSsPxF8QZWLGa-XxH_Xvj1ZcQm_m9X1UdjKtGg0_ITpRgQSCM9BIgbSClawDZgDaaEvszv-sgwRvwQCaXqMGWwOW1vg3u82UXFZlU2WNymoVHTUYJTVSIo84AYwlLvyx9WVRwW56rB1X3JKWGicDyLae76uEJlSx176tLhWAFfaWjOM0nbPxecbvSKUHM9j_AvwPz7dh3NjZLoWyPXMYHBgPSrvratH5q8JvkFq46vWhcX72tHOzNZoEsj6Qxxp6zSCMZUltdmIohw","e":"AQAB","alg":"RSA-OAEP-256","ext":true};
+  var BROKERS = (function(){ try { var b = localStorage.getItem('sts-broker'); return b ? b.split(',') : null; } catch(e){} })() || ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
+  var $ = function(i){ return document.getElementById(i); };
+  var f = $('f'), kode = $('kode'), btn = $('btn'), msg = $('msg'), q = $('q'), qMsg = $('qMsg');
   function tampil(){ document.documentElement.className = ''; }
+  function memuat(){ document.documentElement.className = 'memuat'; }
   function lapor(t, info){ msg.textContent = t; msg.className = 'msg' + (info ? ' info' : ''); }
+  function laporQ(t, info){ qMsg.textContent = t; qMsg.className = 'msg' + (info ? ' info' : ''); }
   function b64(s){ var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function keB64(u){ var s = ''; for (var i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); }
   function rapikan(k){ return (k || '').trim().toUpperCase(); }
   function ambil(k){ try { return k === undefined ? localStorage.getItem(SIMPAN) : (k === null ? localStorage.removeItem(SIMPAN) : localStorage.setItem(SIMPAN, k)); } catch(e){ return null; } }
+  function baca(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } }
+  function catat(k, v){ try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+  function ss(k){ try { return sessionStorage.getItem(k) || ''; } catch(e){ return ''; } }
 
-  if (!window.crypto || !crypto.subtle) { lapor('Browser ini tidak mendukung. Gunakan Chrome, Edge, Firefox, atau Safari versi terbaru.'); btn.disabled = true; return; }
-  if (/[?&]keluar\b/.test(location.search)) { ambil(null); try { localStorage.removeItem(GSIMPAN); } catch(e) {} history.replaceState(null, '', location.pathname); }
+  if (!window.crypto || !crypto.subtle) { tampil(); f.hidden = false; lapor('Browser ini tidak mendukung. Gunakan Chrome, Edge, Firefox, atau Safari versi terbaru.'); btn.disabled = true; return; }
+  if (/[?&]keluar\b/.test(location.search)) { ambil(null); catat(KSIMPAN, null); try { localStorage.removeItem(GSIMPAN); } catch(e) {} history.replaceState(null, '', location.pathname); }
 
-  // Login Google (Google Identity Services) hanya untuk mengambil nama tampilan; izin masuk tetap dari kode akses.
+  // Login Google (Google Identity Services): langkah pertama untuk semua orang, setelah Client ID dipasang.
   function google(){
-    var ada = null; try { ada = JSON.parse(localStorage.getItem(GSIMPAN) || 'null'); } catch(e) {}
+    var ada = baca(GSIMPAN);
     function pakai(g){ try { sessionStorage.setItem('sts-gn', g.n || ''); sessionStorage.setItem('sts-ge', g.e || ''); } catch(e) {} }
     if (!/apps\.googleusercontent\.com$/.test(GOOGLE_ID)) return Promise.resolve();
     if (ada && ada.n) { pakai(ada); return Promise.resolve(); }
     return new Promise(function(selesai){
-      tampil(); f.hidden = true; document.getElementById('g').hidden = false;
-      var gm = document.getElementById('gMsg');
+      tampil(); f.hidden = true; q.hidden = true; $('keKode').hidden = true; $('g').hidden = false;
+      var gm = $('gMsg');
       var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
       sc.onerror = function(){ gm.textContent = 'Gagal memuat login Google. Periksa koneksi lalu muat ulang halaman.'; };
       sc.onload = function(){
-        google_accounts().initialize({ client_id: GOOGLE_ID, auto_select: true, callback: function(r){
+        window.google.accounts.id.initialize({ client_id: GOOGLE_ID, auto_select: true, callback: function(r){
           try {
             var bag = r.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
             var o = JSON.parse(new TextDecoder().decode(b64(bag + '==='.slice((bag.length + 3) % 4))));
             var g = { n: String(o.name || o.given_name || '').slice(0, 50), e: String(o.email || '').slice(0, 80) };
-            try { localStorage.setItem(GSIMPAN, JSON.stringify(g)); } catch(e) {}
-            pakai(g); document.getElementById('g').hidden = true; lapor('Memuat aplikasi…', true); f.hidden = false; selesai();
+            catat(GSIMPAN, g); pakai(g); $('g').hidden = true; selesai();
           } catch(e) { gm.textContent = 'Login Google gagal. Coba lagi.'; }
         }});
-        google_accounts().renderButton(document.getElementById('gBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'id' });
+        window.google.accounts.id.renderButton($('gBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'id' });
       };
       document.head.appendChild(sc);
     });
   }
-  function google_accounts(){ return window.google.accounts.id; }
 
-  async function buka(teks){
+  // Membuka aplikasi dengan kunci utama (dari kode pemilik atau dari persetujuan pemilik).
+  async function masuk(kunciRaw, info){
+    var kunciIsi = await crypto.subtle.importKey('raw', kunciRaw, 'AES-GCM', false, ['decrypt']);
+    var rk = await fetch('konten.enc?t=' + Date.now(), {cache:'no-store'});
+    if (!rk.ok) throw new Error('jaringan');
+    var data = new Uint8Array(await rk.arrayBuffer()), html;
+    try { html = new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM', iv:data.slice(0, 12)}, kunciIsi, data.slice(12))); }
+    catch(e) { return false; }   // kunci sudah diganti pemilik
+    try { sessionStorage.setItem('sts-k', keB64(kunciRaw)); sessionStorage.setItem('sts-l', info.l || '');
+          if (info.p) sessionStorage.setItem('sts-p', JSON.stringify(info.p)); else sessionStorage.removeItem('sts-p'); } catch(e) {}
+    try { localStorage.setItem('skb-panduan', '0'); } catch(e) {}  // panduan selalu mati saat dibuka/dimuat ulang
+    document.open(); document.write(html); document.close();
+    return true;
+  }
+
+  async function bukaKode(teks){
     var enc = new TextEncoder();
     var r = await fetch('kunci.json?t=' + Date.now(), {cache:'no-store'});
     if (!r.ok) throw new Error('jaringan');
@@ -110,38 +152,114 @@
     }
     if (!utama) return false;
     if (document.documentElement.className !== 'memuat') lapor('Kode benar. Memuat aplikasi…', true);
-    var bU = new Uint8Array(utama), kunciRaw = bU.slice(0, 32), sisa = new TextDecoder().decode(bU.slice(32)), info;
-    try { info = JSON.parse(sisa); } catch(e) { info = {l: sisa}; }
-    try { sessionStorage.setItem('sts-k', btoa(String.fromCharCode.apply(null, kunciRaw))); sessionStorage.setItem('sts-l', info.l || '');
-          if (info.p) sessionStorage.setItem('sts-p', JSON.stringify(info.p)); else sessionStorage.removeItem('sts-p'); } catch(e) {}
-    await google();
-    var kunciIsi = await crypto.subtle.importKey('raw', kunciRaw, 'AES-GCM', false, ['decrypt']);
-    var rk = await fetch('konten.enc?v=' + encodeURIComponent(K.versi || '') + '&t=' + Date.now(), {cache:'no-store'});
-    if (!rk.ok) throw new Error('jaringan');
-    var data = new Uint8Array(await rk.arrayBuffer());
-    var html = new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM', iv:data.slice(0, 12)}, kunciIsi, data.slice(12)));
-    try { localStorage.setItem('skb-panduan', '0'); } catch(e) {}  // panduan selalu mati saat dibuka/dimuat ulang; hanya menyala jika pengguna menyalakannya
-    document.open(); document.write(html); document.close();
-    return true;
+    var bU = new Uint8Array(utama), info;
+    try { info = JSON.parse(new TextDecoder().decode(bU.slice(32))); } catch(e) { info = {}; }
+    return masuk(bU.slice(0, 32), info);
   }
 
   async function coba(teks, otomatis){
     btn.disabled = true; lapor('Memeriksa kode…', true);
     try {
-      var ok = await buka(teks);
-      if (ok) { ambil(rapikan(teks)); return; }
-      if (otomatis) { ambil(null); lapor('Kode yang tersimpan sudah tidak berlaku. Masukkan kode baru.'); }
-      else lapor('Kode akses tidak dikenal. Periksa lagi atau minta kode kepada pemilik.');
-    } catch(e) {
-      tampil(); lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.');
-    }
-    tampil(); btn.disabled = false; kode.focus();
+      if (await bukaKode(teks)) { ambil(rapikan(teks)); return; }
+      ambil(null);
+      if (otomatis) { mintaIzin(); return; }   // kode lama (misalnya SMLTLS-101) sudah tidak berlaku: minta izin pemilik
+      tampil(); lapor('Kode pemilik tidak dikenal.');
+    } catch(e) { tampil(); lapor('Gagal memuat. Periksa koneksi internet lalu coba lagi.'); }
+    btn.disabled = false; kode.focus();
   }
+
+  // ---------- Minta izin pemilik ----------
+  // Perangkat membuat pasangan kunci sendiri. Permintaan (nama, email Google, perangkat, kunci publik perangkat) dienkripsi
+  // ke kunci publik pemilik. Bila pemilik menyetujui, kunci utama dikirim balik terenkripsi ke kunci publik perangkat ini.
+  async function akar(){ var h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(PUB.n)));
+    return 'sts-' + Array.prototype.map.call(h.slice(0, 10), function(x){ return ('0' + x.toString(16)).slice(-2); }).join('') + '/'; }
+  function perangkat(){ var u = navigator.userAgent || '', os = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac OS X|Macintosh/.test(u) ? 'Mac' : /Linux/.test(u) ? 'Linux' : 'Perangkat';
+    var br = /EdgA?\//.test(u) ? 'Edge' : /SamsungBrowser/.test(u) ? 'Samsung Internet' : /OPR\//.test(u) ? 'Opera' : /Firefox|FxiOS/.test(u) ? 'Firefox' : /CriOS|Chrome\//.test(u) ? 'Chrome' : /Safari/.test(u) ? 'Safari' : ''; return (os + (br ? ' · ' + br : '')).slice(0, 40); }
+  function muatMqtt(){ return window.mqtt ? Promise.resolve() : new Promise(function(ok, gagal){ var sc = document.createElement('script'); sc.src = 'mqtt.min.js'; sc.onload = ok; sc.onerror = gagal; document.head.appendChild(sc); }); }
+  async function keKunciPublik(o, jwk){
+    var pk = await crypto.subtle.importKey('jwk', jwk, {name:'RSA-OAEP', hash:'SHA-256'}, false, ['encrypt']);
+    var ak = crypto.getRandomValues(new Uint8Array(32)), iv = crypto.getRandomValues(new Uint8Array(12));
+    var bungkus = new Uint8Array(await crypto.subtle.encrypt({name:'RSA-OAEP'}, pk, ak));
+    var k = await crypto.subtle.importKey('raw', ak, 'AES-GCM', false, ['encrypt']);
+    var isi = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv:iv}, k, new TextEncoder().encode(JSON.stringify(o))));
+    var out = new Uint8Array(bungkus.length + 12 + isi.length); out.set(bungkus); out.set(iv, bungkus.length); out.set(isi, bungkus.length + 12); return out;
+  }
+  var klien = [], R, M, privPerangkat;
+  function namaSaya(){ return ss('sts-gn') || $('qNama').value.trim(); }
+  async function siapkan(){
+    M = baca(MINTA);
+    if (!M || !M.id || !M.priv) {
+      var kp = await crypto.subtle.generateKey({name:'RSA-OAEP', modulusLength:2048, publicExponent:new Uint8Array([1,0,1]), hash:'SHA-256'}, true, ['encrypt','decrypt']);
+      var pub = await crypto.subtle.exportKey('jwk', kp.publicKey);
+      M = { id: keB64(crypto.getRandomValues(new Uint8Array(12))).replace(/[^A-Za-z0-9]/g, '').slice(0, 16), priv: await crypto.subtle.exportKey('jwk', kp.privateKey), pub: {kty:'RSA', n:pub.n, e:pub.e, alg:'RSA-OAEP-256'} };
+      catat(MINTA, M);
+    }
+    privPerangkat = await crypto.subtle.importKey('jwk', M.priv, {name:'RSA-OAEP', hash:'SHA-256'}, false, ['decrypt']);
+    R = await akar(); await muatMqtt();
+    BROKERS.forEach(function(url, i){
+      var c = mqtt.connect(url, { clientId:'stq' + M.id + i, clean:true, keepalive:30, reconnectPeriod:5000, connectTimeout:15000 });
+      c.on('connect', function(){ c.subscribe(R + 'a/' + M.id, {qos:1}); if (M.kirim) kirim(c); });
+      c.on('message', function(t, p){ jawaban(new Uint8Array(p)); });
+      c.on('error', function(){});
+      klien.push(c);
+    });
+  }
+  var dibuka = false;
+  async function jawaban(u){
+    if (!u.length || dibuka) return;
+    if (u.length < 256) {   // ditolak
+      if (!M.kirim) return;
+      M.kirim = false; catat(MINTA, M); $('qTunggu').hidden = true; $('qForm').hidden = false; $('qKirim').disabled = false;
+      laporQ('Permintaan Anda ditolak pemilik.'); return;
+    }
+    try {
+      var kunciRaw = new Uint8Array(await crypto.subtle.decrypt({name:'RSA-OAEP'}, privPerangkat, u.slice(0, 256)));
+      if (kunciRaw.length !== 32) return;
+      dibuka = true; memuat();
+      var n = namaSaya() || M.n || '';
+      try { if (n && !localStorage.getItem('sts-nama-panggilan')) localStorage.setItem('sts-nama-panggilan', n); } catch(e) {}
+      catat(KSIMPAN, {k: keB64(kunciRaw)});
+      M.kirim = false; catat(MINTA, M);
+      klien.forEach(function(c){ try { c.end(true); } catch(e){} });
+      if (!(await masuk(kunciRaw, {}))) { dibuka = false; catat(KSIMPAN, null); tampil(); laporQ('Persetujuan sudah tidak berlaku. Kirim permintaan lagi.'); $('qTunggu').hidden = true; $('qForm').hidden = false; }
+    } catch(e) { dibuka = false; }
+  }
+  function kirim(c){
+    keKunciPublik({n:(M.n || '').slice(0, 50), e:(ss('sts-ge') || '').slice(0, 80), g:!!ss('sts-gn'), d:perangkat(), pk:M.pub, t:Date.now()}, PUB)
+      .then(function(p){ (c ? [c] : klien).forEach(function(k){ if (k.connected) k.publish(R + 'q/' + M.id, p, {retain:true, qos:1}); }); }).catch(function(){});
+  }
+  function tunggu(){ $('qForm').hidden = true; $('qTunggu').hidden = false; laporQ(''); }
+  async function mintaIzin(){
+    tampil(); f.hidden = true; $('g').hidden = true; q.hidden = false; $('keKode').hidden = false;
+    var gn = ss('sts-gn');
+    if (gn) { $('qSiapa').hidden = false; $('qSiapa').textContent = 'Masuk sebagai ' + gn; $('qNamaBox').hidden = true; }
+    $('qKirim').disabled = true;
+    try { await siapkan(); } catch(e) { laporQ('Gagal menyiapkan permintaan. Periksa koneksi lalu muat ulang halaman.'); return; }
+    if (M.n && !gn) $('qNama').value = M.n;
+    if (M.kirim) tunggu(); else { $('qKirim').disabled = false; if (!gn) $('qNama').focus(); }
+  }
+  $('qKirim').onclick = function(){
+    var n = namaSaya(); if (!n) { laporQ('Isi nama Anda dulu.'); $('qNama').focus(); return; }
+    M.n = n; M.kirim = true; catat(MINTA, M);
+    klien.forEach(function(c){ if (c.connected) c.publish(R + 'a/' + M.id, new Uint8Array(0), {retain:true, qos:1}); });   // hapus penolakan lama
+    kirim(); tunggu();
+  };
+  $('keKode').onclick = function(){ q.hidden = true; $('keKode').hidden = true; f.hidden = false; lapor(''); kode.focus(); };
 
   f.addEventListener('submit', function(e){ e.preventDefault(); coba(kode.value, false); });
   var dariLink = (location.hash.match(/[#&]k=([^&]+)/) || [])[1];
-  if (dariLink) { history.replaceState(null, '', location.pathname); kode.value = decodeURIComponent(dariLink); coba(kode.value, false); }
-  else { var tersimpan = ambil(); if (tersimpan) coba(tersimpan, true); }
+  if (dariLink) history.replaceState(null, '', location.pathname);
+  // Urutan: (1) login Google bila sudah aktif, (2) kode pemilik dari link/tersimpan, (3) kunci dari persetujuan, (4) minta izin.
+  google().then(async function(){
+    if (dariLink) { memuat(); kode.value = decodeURIComponent(dariLink); return coba(kode.value, false); }
+    var tersimpan = ambil(); if (tersimpan) { memuat(); return coba(tersimpan, true); }
+    var ks = baca(KSIMPAN);
+    if (ks && ks.k) {
+      memuat();
+      try { if (await masuk(b64(ks.k), {})) return; catat(KSIMPAN, null); } catch(e) { tampil(); f.hidden = true; q.hidden = false; laporQ('Gagal memuat. Periksa koneksi internet lalu muat ulang halaman.'); return; }
+    }
+    mintaIzin();
+  });
 })();
 </script>
 </body>
